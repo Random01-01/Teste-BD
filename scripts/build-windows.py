@@ -90,7 +90,7 @@ def checksums(output):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', default='0.1.0')
+    parser.add_argument('--version', default='0.2.0')
     parser.add_argument('--output', type=Path, default=ROOT / 'dist/windows')
     parser.add_argument('--checksums-only', action='store_true')
     args = parser.parse_args()

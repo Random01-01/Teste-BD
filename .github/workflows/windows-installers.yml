@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: write
     env:
-      AURA_VERSION: '0.1.0'
+      AURA_VERSION: '0.2.0'
       PYTHONUTF8: '1'
     steps:
       - uses: actions/checkout@v4
@@ -43,6 +43,9 @@ jobs:
           }
       - name: Build allowlisted payloads and ZIP files
         run: python scripts/build-windows.py --version $env:AURA_VERSION
+      - name: Test component policies with Windows PowerShell 5.1
+        shell: powershell
+        run: ./installer/tests/windows_components.ps1 -RuntimeDir dist/windows/payload/Complete/desktop
       - name: Install official MySQL 8.4 for isolated Windows smoke test
         shell: pwsh
         run: |
@@ -72,15 +75,7 @@ jobs:
       - name: Verify installer extraction without interactive setup
         shell: pwsh
         run: |
-          foreach ($label in @('Essencial','Completo')) {
-            $target = Join-Path $env:RUNNER_TEMP "Aura Installed $label"
-            $exe = (Resolve-Path "dist/windows/Aura-Setup-$label-$env:AURA_VERSION.exe").Path
-            $result = Start-Process $exe -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$target`"" -Wait -PassThru
-            if ($result.ExitCode -ne 0) { throw "Installer failed: $label" }
-            if (-not (Test-Path "$target/LEIAME.txt")) { throw 'LEIAME not installed' }
-            if (-not (Test-Path "$target/backend/manage.py")) { throw 'Backend not installed' }
-            if (Test-Path "$target/backend/.env") { throw 'Secret file included in installer' }
-          }
+          ./installer/tests/windows_extraction.ps1 -Version $env:AURA_VERSION
           python scripts/build-windows.py --checksums-only
       - uses: actions/upload-artifact@v4
         with:
@@ -99,8 +94,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = "v$env:AURA_VERSION-windows-preview"
-          gh release view $tag --repo $env:GITHUB_REPOSITORY --json url 2>$null
+          $existing = gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft 2>$null
           if ($LASTEXITCODE -eq 0) {
+            if (($existing | ConvertFrom-Json).isDraft) { throw 'A draft with this tag requires review before publication.' }
             Write-Host 'Release already exists; immutable published assets were not replaced.'
             exit 0
           }

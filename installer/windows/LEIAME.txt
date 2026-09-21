@@ -13,7 +13,7 @@ acesso pela rede/celular. O servidor escuta SOMENTE em 127.0.0.1. Para um
 site publico com clientes remotos, siga a documentacao de deploy do projeto,
 com servidor HTTPS, MySQL protegido e SMTP. Nao exponha a edicao desktop.
 
-Esta primeira distribuicao deve ser tratada como PRE-RELEASE: teste com
+Esta distribuicao deve ser tratada como PRE-RELEASE: teste com
 dados ficticios antes de usar dados reais. Faca backup antes de atualizar.
 Os instaladores nao possuem assinatura Authenticode. Verifique a origem e
 o SHA256 na release; nao desative as protecoes do Windows. SmartScreen pode
@@ -30,23 +30,81 @@ ESSENCIAL:
 - Nao instala nem reconfigura seu servidor MySQL existente.
 
 COMPLETO:
-- Contem a mesma aplicacao e automatiza a preparacao dos pre-requisitos.
+- Contem a mesma aplicacao e permite SELECIONAR COMPONENTES no assistente.
+- Perfil recomendado: Python, VC++ e MySQL privado; gerenciadores opcionais
+  desmarcados. Perfil personalizado: escolha os componentes desejados.
 - Usa o gerenciador oficial winget (fonte winget) para instalar Python 3.13,
-  Microsoft Visual C++ Runtime x64 e MySQL Server 8.4 LTS se necessarios.
-- Cria um banco PRIVADO do Aura na pasta de dados do usuario, normalmente
+  Microsoft Visual C++ Runtime x64 e MySQL Server 8.4 LTS se selecionados
+  e necessarios. Desmarcar nao remove a necessidade desses requisitos.
+- Com MySQL privado selecionado em uma NOVA instalacao, cria um banco PRIVADO do Aura na pasta de dados do usuario, normalmente
   na porta 3307; nao reutiliza/apaga um banco MySQL existente na porta 3306.
 - Gera senhas aleatorias para as contas tecnicas do MySQL. Nenhuma senha
   padrao vem no pacote. A conta administradora e criada por voce.
 - Os pre-requisitos sao baixados durante o setup. Nao e um pacote offline.
 
 Ambos sao online: precisam de internet para o PyPI e, no Completo, para
-winget/Microsoft/Python/Oracle. Um setup pequeno NAO significa que o download
+winget/Microsoft/Python/Oracle e dos gerenciadores selecionados. Um setup pequeno NAO significa que o download
 completo sera pequeno. Reserve ao menos 2 GB livres e alguns minutos.
 Windows ARM, Windows 32 bits, Linux e macOS nao sao suportados por estes EXEs.
 
 Os ZIPs de arquivos contem o mesmo payload dos respectivos EXEs. Prefira
 os EXEs para atalhos e desinstalacao. No ZIP, extraia tudo em uma pasta de
 uso permanente (nao execute de dentro do ZIP) e rode INSTALAR.cmd.
+
+1.1 COMPONENTES E ALTERNATIVAS (COMPLETO 0.2.0+)
+----------------------------------------------
+Na tela de componentes, o Aura e suas bibliotecas sao obrigatorios. Voce
+pode marcar/desmarcar individualmente:
+- Python: autoriza instalar Python 3.13 x64 caso nao exista 3.12/3.13 x64.
+- Visual C++ Runtime: autoriza instalar o runtime x64 caso falte.
+- MySQL 8.4 privado: prepara a instancia privada e instala os binarios
+  se faltarem. Desmarcado em NOVA instalacao: pede a conexao com um banco
+  MySQL local dedicado ja existente (veja secao 4).
+- DBeaver Community: gerenciador grafico opcional, com suporte a varios bancos.
+- HeidiSQL: outro gerenciador grafico opcional para administrar o MySQL.
+
+DBeaver e HeidiSQL NAO substituem o servidor MySQL. Pode escolher um, ambos
+ou nenhum. Eles nao sao necessarios para usar o Aura. PostgreSQL, SQLite e
+outros servidores NAO passam a ser suportados por instalar esses clientes.
+Se desmarcar um requisito ausente, o configurador interrompe com instrucoes;
+nao instala esse pacote escondido. Bibliotecas Python continuam obrigatorias
+e sao baixadas do PyPI, inclusive quando Python estiver desmarcado.
+
+As escolhas ficam em desktop/install-options.json (somente booleanos, sem
+senhas). Configurar Aura retoma essas escolhas. Para muda-las, reexecute o
+EXE ou use o atalho Escolher componentes do Aura (perguntas no terminal).
+O ZIP Completo pergunta os mesmos componentes na primeira execucao de
+INSTALAR.cmd. Para alterar depois, execute no PowerShell, dentro da pasta:
+  .\desktop\Configure-Aura.ps1 -Mode Complete -ChooseComponents
+
+ATUALIZACAO: faca backup e feche o Aura. Um banco ja configurado e sempre
+preservado. Mudar a caixa MySQL NAO migra nem troca a conexao existente,
+e desmarcar componentes NAO desinstala programas. Se o banco privado ja
+existe, seus binarios MySQL continuam necessarios mesmo com a caixa
+MySQL desmarcada. Se faltarem, instale-os novamente ou autorize no setup.
+Ao trocar de Completo para Essencial, nenhuma ferramenta extra e instalada.
+
+Gerenciadores sao instalados APOS a configuracao do Aura, para o usuario
+atual, via IDs DBeaver.DBeaver.Community e HeidiSQL.HeidiSQL na fonte winget.
+Usamos --no-upgrade: o setup nao atualiza automaticamente programas ja
+instalados. As versoes disponiveis desses gerenciadores dependem do catalogo
+winget. Falhas de download/UAC sao informadas; o Aura ja configurado e seus
+dados ficam preservados. Reabra Configurar Aura para tentar novamente.
+A desinstalacao do Aura nao remove DBeaver, HeidiSQL ou pre-requisitos;
+para remove-los, use Aplicativos instalados do Windows.
+
+PARA CONECTAR UM GERENCIADOR AO AURA:
+1) Abra Iniciar Aura e mantenha-o funcionando (inicia o MySQL privado).
+2) Abra DBeaver ou HeidiSQL pelo menu Iniciar do Windows, e crie conexao
+   MySQL/TCP com host 127.0.0.1. Para banco privado: porta escolhida no setup
+   (padrao 3307), banco aura e usuario aura_app.
+3) Consulte os valores DB_* no arquivo PRIVADO %LOCALAPPDATA%\Aura\.env
+   somente no seu computador. Para banco existente, use os valores dele.
+   Nao publique esse arquivo, senhas ou capturas de tela. Nao use root.
+4) DBeaver pode pedir download do driver MySQL pela internet na primeira
+   conexao. Drivers e conexoes NAO sao configurados automaticamente pelo Aura.
+Faca backup antes de editar dados. SQL manual pode ignorar validacoes da
+aplicacao. Para uso cotidiano, prefira a interface web do Aura.
 
 2. PRE-REQUISITOS DO SETUP COMPLETO
 ---------------------------------
@@ -60,7 +118,9 @@ O assistente instala a aplicacao para o usuario atual; nao pede elevacao
 permanente. MySQL/VC++ podem solicitar elevacao atraves de seus instaladores.
 As licencas dos pre-requisitos pertencem a seus respectivos fornecedores;
 a opcao Completo utiliza --accept-package-agreements do winget. Ao escolher
-essa edicao, revise/aceite os termos Microsoft, Python e Oracle/MySQL.
+os componentes, revise/aceite os termos dos fornecedores aplicaveis:
+Microsoft, Python, Oracle/MySQL, DBeaver Community e/ou HeidiSQL.
+Sites: https://dbeaver.io/ e https://www.heidisql.com/.
 Nao remova bibliotecas/pre-requisitos usados por outros programas.
 
 3. INSTALACAO PASSO A PASSO
@@ -70,13 +130,14 @@ Nao remova bibliotecas/pre-requisitos usados por outros programas.
    Get-FileHash .\Aura-Setup-Completo-VERSAO.exe -Algorithm SHA256
    Compare o resultado com a linha do mesmo arquivo em SHA256SUMS.txt.
 2) Execute o EXE. Leia este documento no assistente e selecione a pasta.
+   No Completo, escolha Recomendada ou Personalizada e marque componentes.
    Padrao dos programas: %LOCALAPPDATA%\Programs\Aura
 3) Deixe marcada a opcao de configurar o Aura ao concluir. Abrira uma
    janela do PowerShell. Ela utiliza ExecutionPolicy Bypass APENAS nessa
    invocacao para os scripts deste pacote; nao muda a politica do Windows.
 4) Aguarde os downloads. Nao feche a janela antes de concluir.
-5) No Completo, confirme a porta privada do MySQL (normalmente 3307).
-   No Essencial, informe a conexao com o banco local dedicado existente.
+5) No Completo com banco privado selecionado, confirme a porta privada do MySQL (normalmente 3307).
+   No Essencial ou Completo sem banco privado, informe a conexao com o banco local dedicado existente.
 6) Informe seu e-mail e uma senha forte para a ADMINISTRADORA. A senha nao
    aparece enquanto voce digita. Confirme-a. Nao ha admin/senha padrao.
 7) Aguarde a mensagem "Concluido". Se houver erro, o programa explica o

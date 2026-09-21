@@ -3,12 +3,17 @@ CONTEUDO DOS PACOTES AURA
 
 Essencial e Completo levam os mesmos arquivos da aplicacao. O que muda e a
 etapa de pre-requisitos do configurador, registrada em release-info.json:
-Essential reutiliza Python/MySQL; Complete pode instala-los online.
+Essential reutiliza Python/MySQL; Complete permite escolher quais preparar
+online e oferece DBeaver Community e HeidiSQL como gerenciadores opcionais.
+Gerenciadores nao substituem o servidor MySQL e nao sao requisitos do Aura.
 
 frontend/: interface e assets. Nenhuma senha, token ou dado de cliente.
 backend/: API Django, configuracao base e perfil desktop local, models,
 serializers, migrations, URLs e Django Admin. Nao inclui banco, .env real,
 fixtures da previa, testes, caches, node_modules nem ambientes virtuais.
+desktop/install-options.json: gerado no computador, guarda somente escolhas
+de componentes. Nao inclui senhas e nao integra o manifesto original.
+desktop/Components.ps1: valida escolhas e instala apenas extras selecionados.
 desktop/: scripts PowerShell de setup/inicio/backup e runtime Python.
 requirements*.txt: versoes das bibliotecas obtidas do PyPI durante o setup.
 config.desktop: configuracao especifica para HTTP em loopback, DEBUG=False.
@@ -18,7 +23,8 @@ release-info.json: versao, edicao, arquitetura e identificacao de pacote online.
 *.cmd: alternativas aos atalhos, especialmente para a distribuicao ZIP.
 aura.ico: icone local dos atalhos e do desinstalador.
 
-NAO INCLUI: Python, MySQL, VC++ ou bibliotecas ja instalados/offline; dados
+NAO INCLUI: instaladores offline de DBeaver/HeidiSQL, drivers/conexoes
+preconfiguradas, Python, MySQL, VC++ ou bibliotecas ja instalados/offline; dados
 reais, senha padrao de administradora, credenciais, tokens do Arena/GitHub,
 chaves de producao, acesso a hospedagem, SMTP contratado ou dominio publico.
 

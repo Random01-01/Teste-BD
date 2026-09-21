@@ -21,6 +21,8 @@ class DistributionTests(unittest.TestCase):
         self.assertIn('backend/users/security.py', files)
         self.assertIn('backend/appointments/migrations/0004_schedule_settings.py', files)
         self.assertIn('desktop/run.py', files)
+        self.assertIn('desktop/Components.ps1', files)
+        self.assertNotIn('desktop/install-options.json', files)
         for name in files:
             self.assertNotIn('.env', name)
             self.assertNotIn('sqlite', name)
@@ -32,7 +34,7 @@ class DistributionTests(unittest.TestCase):
     def test_two_packages_manifests_and_no_default_account(self):
         with tempfile.TemporaryDirectory() as folder:
             output = Path(folder)
-            packager.build(output, '0.1.0')
+            packager.build(output, '0.2.0')
             self.assertEqual(len(list(output.glob('*.zip'))), 2)
             for edition in ['Essential', 'Complete']:
                 payload = output / 'payload' / edition
@@ -51,7 +53,7 @@ class DistributionTests(unittest.TestCase):
 
     def test_rejects_unsafe_output_and_invalid_version(self):
         with self.assertRaises(ValueError):
-            packager.build(ROOT, '0.1.0')
+            packager.build(ROOT, '0.2.0')
         with self.assertRaises(ValueError):
             packager.build(ROOT / 'dist/windows', 'bad/version')
 
