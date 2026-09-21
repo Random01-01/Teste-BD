@@ -52,10 +52,11 @@ O workflow **Windows installers** roda em pushes da branch de trabalho e de `mai
 5. Testa uma base MySQL privada real, migrations, servidor local, CSRF, login/logout e backup.
 6. Compila os dois EXEs e testa a extração silenciosa dos arquivos.
 7. Publica os arquivos como **artefato do workflow**, com SHA256SUMS.
+8. Na branch de entrega `arena/01a0c1b9-teste-bd`, publica também a primeira pré-release solicitada. O upload termina em rascunho antes de tornar a release pública; uma tag já existente não é sobrescrita.
 
 A instalação completa interativa via winget/UAC e a criação manual da administradora ainda devem passar por validação em uma VM Windows 10/11 limpa antes de uma release estável. O teste de CI verifica os componentes nativos, mas não substitui esse teste de experiência do usuário.
 
-Para uma release, baixe o artefato aprovado e use `gh release create`/`gh release upload`. Não envie `dist/` ao Git. Prefira uma **pré-release** para a primeira distribuição. Inclua os dois EXEs, dois ZIPs, LEIAME, CONTEUDO e SHA256SUMS. Se a compilação Windows falhar, não publique EXEs como validados.
+A primeira pré-release está em https://github.com/Random01-01/Teste-BD/releases/tag/v0.1.0-windows-preview. Para versões futuras, ajuste versão/tag e notas, ou baixe o artefato aprovado e use `gh release create`/`gh release upload`. Não envie `dist/` ao Git. Prefira uma **pré-release** para a primeira distribuição. Inclua os dois EXEs, dois ZIPs, LEIAME, CONTEUDO e SHA256SUMS. Se a compilação Windows falhar, não publique EXEs como validados.
 
 Os EXEs não são assinados digitalmente nesta versão; distribuição estável requer certificado Authenticode/assinatura e nova geração dos checksums **após** assinar. Nunca desative SmartScreen como solução de distribuição.
 

@@ -37,7 +37,7 @@ test('nova reserva, confirmação e cancelamento pelo painel', async ({ page }) 
   const created = await (await saved).json();
   await expect(page.getByRole('heading', { name: 'Tudo pronto para o seu cuidado!' })).toBeVisible();
   await page.getByRole('button', { name: /Perfeito, combinado/ }).click();
-  await page.getByRole('link', { name: 'Minha agenda', exact: true }).click();
+  await page.getByRole('link', { name: /^Minha agenda(?:\s*\d+)?$/ }).click();
   await page.locator('#agenda-date').fill(date);
   await page.locator(`.appointments-table [data-action=appointment][data-id="${created.id}"]`).click();
   await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
@@ -70,7 +70,7 @@ test('configurações, expediente e bloqueio podem ser alterados', async ({ page
   await page.locator('[name=reason]').fill('Pausa de teste E2E');
   await page.getByRole('button', { name: 'Bloquear horário', exact: true }).click();
   await expect(page.locator('.modal')).toHaveCount(0);
-  await page.getByRole('link', { name: 'Minha agenda', exact: true }).click();
+  await page.getByRole('link', { name: /^Minha agenda(?:\s*\d+)?$/ }).click();
   await page.locator('.block-item').filter({ hasText: 'Pausa de teste E2E' }).getByRole('button').click();
   await expect(page.locator('.block-item').filter({ hasText: 'Pausa de teste E2E' })).toHaveCount(0);
 });
