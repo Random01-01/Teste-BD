@@ -1,0 +1,18 @@
+{
+  "name": "aura-agendamento",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=backend/.env scripts/dev-server.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --check frontend/js/app.js && node --check frontend/js/api.js && node --check scripts/dev-server.mjs && node --check scripts/build.mjs",
+    "test:e2e": "playwright test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

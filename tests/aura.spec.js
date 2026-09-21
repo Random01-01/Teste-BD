@@ -1,0 +1,112 @@
+import { test, expect } from '@playwright/test';
+
+test('painel, busca global, navegação e detalhes reais', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Seu dia, em harmonia.' })).toBeVisible();
+  await expect(page.locator('.stats-grid .stat-card')).toHaveCount(4);
+  await expect(page.locator('.appointments-table tbody tr')).toHaveCount(6);
+  await page.locator('[data-action=search]').click();
+  await page.locator('#global-search').fill('sobrancelhas');
+  await page.locator('.search-results [data-action=service-detail]').first().click();
+  await expect(page.locator('#modal-title')).toHaveText('Design de sobrancelhas');
+  await page.keyboard.press('Escape');
+  await page.getByRole('link', { name: 'Clientes', exact: true }).click();
+  await page.locator('#client-search').fill('Ana Clara');
+  await expect(page.locator('.clients-table tbody tr')).toHaveCount(1);
+  await page.getByRole('button', { name: /Ver perfil/ }).click();
+  await expect(page.locator('#modal-title')).toHaveText('Ana Clara Silva');
+  expect(errors).toEqual([]);
+});
+
+test('nova reserva, confirmação e cancelamento pelo painel', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Novo agendamento', exact: true }).click();
+  await page.locator('#booking-service').selectOption({ label: 'Design de sobrancelhas · R$ 45,00' });
+  await page.locator('select[name=client]').selectOption({ label: 'Ana Clara Silva' });
+  const day = new Date(); day.setDate(day.getDate() + 12);
+  if (day.getDay() === 0) day.setDate(day.getDate() + 1);
+  const date = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+  await page.locator('#booking-date').fill(date);
+  await page.locator('.time-slot').first().click();
+  await page.locator('[name=client_notes]').fill('Teste automatizado E2E');
+  const saved = page.waitForResponse(r => r.url().endsWith('/api/appointments/') && r.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Criar agendamento', exact: true }).click();
+  const created = await (await saved).json();
+  await expect(page.getByRole('heading', { name: 'Tudo pronto para o seu cuidado!' })).toBeVisible();
+  await page.getByRole('button', { name: /Perfeito, combinado/ }).click();
+  await page.getByRole('link', { name: 'Minha agenda', exact: true }).click();
+  await page.locator('#agenda-date').fill(date);
+  await page.locator(`.appointments-table [data-action=appointment][data-id="${created.id}"]`).click();
+  await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
+  await expect(page.locator('tr').filter({ has: page.locator(`[data-action=appointment][data-id="${created.id}"]`) }).locator('.confirmed')).toHaveCount(1);
+  await page.locator(`.appointments-table [data-action=appointment][data-id="${created.id}"]`).click();
+  await page.getByRole('button', { name: 'Cancelar agendamento', exact: true }).click();
+  await page.getByRole('button', { name: 'Sim, cancelar', exact: true }).click();
+  await expect(page.locator('tr').filter({ has: page.locator(`[data-action=appointment][data-id="${created.id}"]`) }).locator('.cancelled')).toHaveCount(1);
+});
+
+test('configurações, expediente e bloqueio podem ser alterados', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Configurações', exact: true }).click();
+  const input = page.locator('[name=professional_name]');
+  const original = await input.inputValue();
+  await input.fill('Mariana Teste');
+  await page.getByRole('button', { name: 'Salvar preferências', exact: true }).click();
+  await expect(page.locator('.account-button strong')).toHaveText('Mariana Teste');
+  await page.locator('[name=professional_name]').fill(original);
+  await page.getByRole('button', { name: 'Salvar preferências', exact: true }).click();
+  await expect(page.locator('.account-button strong')).toHaveText(original);
+  await page.getByRole('link', { name: 'Horários de atendimento', exact: true }).click();
+  await page.locator('[data-action=hour-edit]').first().click();
+  await page.getByRole('button', { name: 'Salvar alterações', exact: true }).click();
+  await expect(page.locator('.modal')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Bloquear uma data ou horário', exact: true }).click();
+  const day = new Date(); day.setDate(day.getDate() + 50);
+  const date = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+  await page.locator('[name=date]').fill(date);
+  await page.locator('[name=reason]').fill('Pausa de teste E2E');
+  await page.getByRole('button', { name: 'Bloquear horário', exact: true }).click();
+  await expect(page.locator('.modal')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Minha agenda', exact: true }).click();
+  await page.locator('.block-item').filter({ hasText: 'Pausa de teste E2E' }).getByRole('button').click();
+  await expect(page.locator('.block-item').filter({ hasText: 'Pausa de teste E2E' })).toHaveCount(0);
+});
+
+test('cadastro de cliente, perfil, saída e recuperação de senha', async ({ page }) => {
+  await page.goto('/#cadastro');
+  const email = `e2e-${Date.now()}@example.com`;
+  await page.locator('[name=full_name]').fill('Cliente E2E');
+  await page.locator('[name=email]').fill(email);
+  await page.locator('[name=phone]').fill(`119${String(Date.now()).slice(-8)}`);
+  await page.locator('[name=password]').fill('E2e-Test-only!8910');
+  await page.locator('[name=password_confirmation]').fill('E2e-Test-only!8910');
+  await page.locator('[name=terms]').check();
+  await page.getByRole('button', { name: 'Criar minha conta', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Que bom ter você aqui, Cliente.' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Clientes', exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Meu perfil', exact: true }).click();
+  await page.locator('[name=address]').fill('Endereço fictício de teste');
+  await page.getByRole('button', { name: 'Salvar meus dados', exact: true }).click();
+  await expect(page.locator('#toast')).toContainText('Seus dados foram atualizados.');
+  await page.reload();
+  await expect(page.locator('[name=address]')).toHaveValue('Endereço fictício de teste');
+  await page.locator('[data-action=account]').click();
+  await page.getByRole('button', { name: 'Sair da minha conta', exact: true }).click();
+  await page.getByRole('link', { name: 'Esqueci minha senha', exact: true }).click();
+  await page.locator('[name=email]').fill(email);
+  await page.getByRole('button', { name: 'Enviar link de recuperação', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Confira sua caixa de entrada.' })).toBeVisible();
+});
+
+test('layout móvel sem rolagem horizontal e menu acessível', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Seu dia, em harmonia.' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+  await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
+  await page.getByRole('link', { name: 'Serviços', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Seu talento, em cada detalhe.' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+});
