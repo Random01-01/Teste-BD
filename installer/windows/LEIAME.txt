@@ -1,0 +1,239 @@
+AURA - INSTALACAO PARA WINDOWS
+========================================
+Edicao online | Windows 10/11 x64 | Uso local no computador
+
+LEIA ANTES DE INSTALAR
+---------------------
+Este pacote instala o sistema web Aura no seu computador. A interface abre
+no navegador, mas Python/Django e MySQL executam localmente. Nao depende
+do Arena, do endereco e2b.app nem de Traffic Access Token.
+
+NAO publica um site na internet, NAO configura GitHub Pages e NAO permite
+acesso pela rede/celular. O servidor escuta SOMENTE em 127.0.0.1. Para um
+site publico com clientes remotos, siga a documentacao de deploy do projeto,
+com servidor HTTPS, MySQL protegido e SMTP. Nao exponha a edicao desktop.
+
+Esta primeira distribuicao deve ser tratada como PRE-RELEASE: teste com
+dados ficticios antes de usar dados reais. Faca backup antes de atualizar.
+Os instaladores nao possuem assinatura Authenticode. Verifique a origem e
+o SHA256 na release; nao desative as protecoes do Windows. SmartScreen pode
+mostrar um aviso de editor desconhecido.
+
+1. QUAL PACOTE ESCOLHER?
+-----------------------
+ESSENCIAL:
+- Contem somente a aplicacao e ferramentas de configuracao/inicializacao.
+- Requer Python 3.12 ou 3.13 x64 ja instalado, Visual C++ Runtime x64 e
+  um servidor MySQL local compativel (recomendado 8.4 LTS).
+- Pede nome/porta/usuario/senha de um banco DEDICADO ao Aura.
+- Baixa as bibliotecas Python pela internet e aplica as migrations.
+- Nao instala nem reconfigura seu servidor MySQL existente.
+
+COMPLETO:
+- Contem a mesma aplicacao e automatiza a preparacao dos pre-requisitos.
+- Usa o gerenciador oficial winget (fonte winget) para instalar Python 3.13,
+  Microsoft Visual C++ Runtime x64 e MySQL Server 8.4 LTS se necessarios.
+- Cria um banco PRIVADO do Aura na pasta de dados do usuario, normalmente
+  na porta 3307; nao reutiliza/apaga um banco MySQL existente na porta 3306.
+- Gera senhas aleatorias para as contas tecnicas do MySQL. Nenhuma senha
+  padrao vem no pacote. A conta administradora e criada por voce.
+- Os pre-requisitos sao baixados durante o setup. Nao e um pacote offline.
+
+Ambos sao online: precisam de internet para o PyPI e, no Completo, para
+winget/Microsoft/Python/Oracle. Um setup pequeno NAO significa que o download
+completo sera pequeno. Reserve ao menos 2 GB livres e alguns minutos.
+Windows ARM, Windows 32 bits, Linux e macOS nao sao suportados por estes EXEs.
+
+Os ZIPs de arquivos contem o mesmo payload dos respectivos EXEs. Prefira
+os EXEs para atalhos e desinstalacao. No ZIP, extraia tudo em uma pasta de
+uso permanente (nao execute de dentro do ZIP) e rode INSTALAR.cmd.
+
+2. PRE-REQUISITOS DO SETUP COMPLETO
+---------------------------------
+- Windows 10/11 x64 atualizado (recomendado Windows 11).
+- App Installer / Instalador de Aplicativo atualizado pela Microsoft Store,
+  com o comando winget funcionando. Teste no terminal: winget --version
+- Permissao para aceitar UAC quando o instalador oficial de MySQL/VC++ pedir.
+- Conexao com internet. Proxy corporativo/antivirus pode bloquear downloads.
+
+O assistente instala a aplicacao para o usuario atual; nao pede elevacao
+permanente. MySQL/VC++ podem solicitar elevacao atraves de seus instaladores.
+As licencas dos pre-requisitos pertencem a seus respectivos fornecedores;
+a opcao Completo utiliza --accept-package-agreements do winget. Ao escolher
+essa edicao, revise/aceite os termos Microsoft, Python e Oracle/MySQL.
+Nao remova bibliotecas/pre-requisitos usados por outros programas.
+
+3. INSTALACAO PASSO A PASSO
+--------------------------
+1) Baixe Aura-Setup-Essencial-VERSAO.exe ou Aura-Setup-Completo-VERSAO.exe
+   somente da release oficial. Baixe SHA256SUMS.txt para conferir o arquivo:
+   Get-FileHash .\Aura-Setup-Completo-VERSAO.exe -Algorithm SHA256
+   Compare o resultado com a linha do mesmo arquivo em SHA256SUMS.txt.
+2) Execute o EXE. Leia este documento no assistente e selecione a pasta.
+   Padrao dos programas: %LOCALAPPDATA%\Programs\Aura
+3) Deixe marcada a opcao de configurar o Aura ao concluir. Abrira uma
+   janela do PowerShell. Ela utiliza ExecutionPolicy Bypass APENAS nessa
+   invocacao para os scripts deste pacote; nao muda a politica do Windows.
+4) Aguarde os downloads. Nao feche a janela antes de concluir.
+5) No Completo, confirme a porta privada do MySQL (normalmente 3307).
+   No Essencial, informe a conexao com o banco local dedicado existente.
+6) Informe seu e-mail e uma senha forte para a ADMINISTRADORA. A senha nao
+   aparece enquanto voce digita. Confirme-a. Nao ha admin/senha padrao.
+7) Aguarde a mensagem "Concluido". Se houver erro, o programa explica o
+   problema; os arquivos existentes sao preservados. Corrija a causa e
+   use o atalho Configurar Aura para retomar. Nao apague a pasta de dados.
+8) Abra Iniciar Aura. O navegador abrira http://127.0.0.1:8765/#login
+
+A copia dos arquivos pelo EXE nao significa que a configuracao terminou.
+O sistema so inicia depois de criar o ambiente, conectar ao banco, aplicar
+as migrations e criar uma administradora. Cancelar a janela nessa etapa
+exige executar Configurar Aura novamente.
+
+4. PREPARAR O MYSQL PARA O ESSENCIAL
+----------------------------------
+Use um banco dedicado e um usuario que possa criar/alterar suas tabelas.
+Em um cliente MySQL com permissoes administrativas, execute adaptando os
+placeholders (nao copie a senha de exemplo como senha real):
+
+  CREATE DATABASE aura CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  CREATE USER 'aura_app'@'localhost' IDENTIFIED BY 'SUBSTITUA_POR_SENHA_FORTE';
+  GRANT ALL PRIVILEGES ON aura.* TO 'aura_app'@'localhost';
+
+No configurador informe porta 3306 (ou a sua), banco aura e usuario aura_app.
+O setup Essencial nao aceita root como conta de aplicacao. Nao use um banco
+com tabelas de outro sistema. Para uma instalacao Aura existente, faca backup
+antes de migrar. Nao aponte a ferramenta para um banco de producao remoto.
+
+5. USAR O AURA
+--------------
+- Iniciar Aura: abre o servidor local e o navegador. Mantenha a janela do
+  servidor aberta enquanto usa o sistema. Fechar somente a aba nao para
+  o servidor. Para encerrar, pressione Ctrl+C NA JANELA DO SERVIDOR e aguarde
+  o encerramento do MySQL privado. Evite fechar a janela pelo X/desligar a forca.
+- Configurar Aura: conclui a primeira configuracao ou aplica migrations/
+  dependencias em uma atualizacao. Feche o Aura antes. Dados e senhas ja
+  existentes sao preservados; executar o setup novamente nao redefine contas.
+- Backup Aura: exporta o banco enquanto o Aura/MySQL esta em funcionamento.
+- LEIAME: abre este documento.
+
+A primeira base e vazia, sem dados reais ou demonstracao. Entre com a conta
+criada e cadastre servicos, clientes e horarios antes de reservar atendimentos.
+O Django Admin esta em http://127.0.0.1:8765/admin/ e usa a mesma administradora.
+O painel local tem sessoes e CSRF reais; nao simula login e nao desativa CSRF.
+
+Atendimentos, clientes e senhas pertencem APENAS ao banco deste computador.
+As contas da previa do Arena NAO sao transferidas para a instalacao.
+
+6. ONDE FICAM OS ARQUIVOS?
+-------------------------
+PROGRAMAS - pasta escolhida, padrao %LOCALAPPDATA%\Programs\Aura:
+  frontend\         HTML, CSS, JavaScript, imagens e fontes locais
+  backend\          Django/API, modelos e migrations
+  desktop\          Scripts do configurador, servidor local e backup
+  LEIAME.txt        Este documento
+  CONTEUDO.txt      Lista descritiva dos arquivos incluidos
+  manifest.json     Versao/edicao e SHA256 de cada arquivo do pacote
+  INSTALAR.cmd      Configuracao alternativa para o ZIP
+  INICIAR.cmd       Inicializacao alternativa para o ZIP
+  BACKUP.cmd        Backup alternativo para o ZIP
+
+DADOS - %LOCALAPPDATA%\Aura (separada dos programas):
+  .env              Chave da aplicacao e credenciais do banco (SENSIVEL)
+  venv\             Ambiente Python da aplicacao
+  mysql\            Banco privado criado pelo Completo
+  mysql-managed.json  Metadados e senha tecnica root (SENSIVEL)
+  static\           Assets do Django Admin
+  emails\           E-mails simulados, com links privados de recuperacao
+  logs\mysql.log    Log da instancia MySQL privada
+  backups\          Exportacoes do banco
+  configured        Marcador de configuracao concluida
+
+A pasta de dados recebe ACL restrita ao usuario atual e SYSTEM. Administradores
+do Windows ainda podem tomar posse: proteja sua conta/disco (ex.: BitLocker).
+Nao envie .env, mysql-managed.json, emails ou backups ao GitHub ou a terceiros.
+Nao compartilhe o conteudo da pasta de dados em capturas de tela.
+
+7. BACKUP E RESTAURACAO
+----------------------
+Mantenha o Aura/MySQL iniciado e execute Backup Aura. O ZIP e criado em:
+  %LOCALAPPDATA%\Aura\backups\aura-DATA-HORA.zip
+
+O backup contem database.sql e uma copia da configuracao, inclusive credenciais.
+O ZIP NAO e criptografado. Guarde a copia externa em armazenamento criptografado,
+com acesso restrito, e teste a restauracao periodicamente. Nunca envie o ZIP
+para uma release publica. A copia da configuracao serve de referencia; nao
+sobrescreva automaticamente a configuracao de outro computador.
+
+Para restaurar (operacao avancada):
+1) Faca um backup atual e confirme que o arquivo de origem e confiavel.
+2) Instale/configure o Aura no destino, inicie-o e use o MySQL Workbench ou
+   mysql.exe para importar database.sql no banco dedicado configurado.
+3) A importacao substitui tabelas/dados do banco de destino. Nao use em outro
+   banco. Feche as abas do Aura durante a importacao; mantenha o processo
+   servidor aberto se ele e quem executa o MySQL privado.
+4) Preserve as novas credenciais de conexao do destino (.env). As contas da
+   aplicacao e seus hashes de senha sao restaurados do SQL.
+5) Encerre o Aura com Ctrl+C, execute Configurar Aura para migrations se
+   necessario e inicie novamente. Verifique clientes, agenda e acesso.
+
+No Essencial, o backup precisa dos utilitarios MySQL (mysqldump.exe), instalados
+no caminho padrao do MySQL ou disponiveis no PATH. Um erro de backup nao cria
+um arquivo de sucesso. Nunca copie a pasta mysql enquanto o banco esta ativo
+como substituto de um backup consistente.
+
+8. E-MAIL E RECUPERACAO DE SENHA
+------------------------------
+Por padrao NAO sao enviados e-mails reais. As mensagens sao gravadas na pasta
+privada emails\, inclusive links de recuperacao. Nao compartilhe esses arquivos.
+Para envio real configure SMTP no .env (EMAIL_BACKEND, EMAIL_HOST, EMAIL_PORT,
+EMAIL_USE_TLS, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, DEFAULT_FROM_EMAIL) e
+reinicie o Aura. A instalacao e local: os links apontam ao proprio computador;
+nao servem como um site publico de agendamentos para clientes remotos.
+
+Se voce e a dona desta instalacao e perdeu a senha, feche o Aura, inicie-o
+novamente e use Esqueci minha senha. Leia o e-mail simulado na pasta privada.
+Para manutencao avancada, o comando Django changepassword pode ser utilizado
+com DJANGO_SETTINGS_MODULE=config.desktop, AURA_DATA_DIR e DJANGO_ENV_FILE
+apontando para esta instalacao e com MySQL em funcionamento.
+
+9. ATUALIZACAO E DESINSTALACAO
+-----------------------------
+- Faca backup; encerre Aura; execute a nova versao do setup na mesma pasta.
+- Essencial e Completo compartilham a mesma identidade de aplicacao. Trocar
+  a edicao nao migra/substitui automaticamente um banco existente: a conexao
+  configurada e preservada para evitar perda de dados.
+- O desinstalador remove programas/atalhos, MAS PRESERVA %LOCALAPPDATA%\Aura,
+  incluindo o banco, venv e backups. Nao remova essa pasta sem backup.
+- Python, VC++ e MySQL instalados pelo winget sao preservados, pois podem
+  ser usados por outros programas. Remova-os separadamente se nao precisar.
+- Para remover todos os dados, pare a aplicacao, faca backup, desinstale e
+  remova manualmente a pasta de dados. Essa remocao e irreversivel.
+
+10. PROBLEMAS COMUNS
+-------------------
+"winget nao encontrado": instale/atualize App Installer na Microsoft Store.
+"Python nao encontrado": use Python 3.12/3.13 x64 oficial ou Setup Completo.
+"pip sem wheel/sem internet": verifique arquitetura, proxy, internet e PyPI.
+"Porta ocupada": nao mate processos desconhecidos. Feche a outra instancia.
+ Se voce fechou o Aura a forca e sobrou um mysqld privado, reinicie o Windows.
+ Para trocar a porta HTTP, edite AURA_PORT no .env com o Aura parado.
+"Access denied MySQL": confira conta/porta/senha. No Essencial, confira GRANT.
+"MySQL nao inicia": veja logs/mysql.log; nao apague o banco para tentar corrigir.
+"UAC recusado/reinicio pendente": autorize o instalador oficial ou reinicie e
+ rode Configurar Aura novamente. A configuracao pode ser retomada.
+"PowerShell bloqueado pela empresa": solicite liberacao ao administrador;
+ nao desative politicas de seguranca para contornar bloqueios corporativos.
+"Missing Traffic Access Token": voce abriu uma URL do Arena. Esta instalacao
+ usa http://127.0.0.1:8765 e nao exige tokens de infraestrutura.
+
+11. LICENCAS E SEGURANCA
+-----------------------
+Fontes DM Sans e Manrope: SIL Open Font License, textos em frontend/assets/fonts.
+Python, Django, MySQL, Waitress, WhiteNoise e demais componentes mantem suas
+licencas originais. Dependencias baixadas nao sao incorporadas aos EXEs deste
+projeto. O banner e uma imagem gerada para o Aura.
+
+Mantenha Windows e dependencias atualizados. Nao use senhas comuns. Dados de
+clientes podem ser sensiveis: configure politicas de privacidade, consentimento,
+retencao e backups antes de uso real. O pacote nao garante adequacao juridica
+ou seguranca de uma maquina comprometida. Nao exponha portas na internet.

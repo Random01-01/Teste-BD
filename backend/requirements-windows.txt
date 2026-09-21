@@ -1,0 +1,4 @@
+# Runtime Windows local: Gunicorn é apenas Linux; Waitress atende o WSGI.
+-r requirements.txt
+waitress==3.0.2
+whitenoise==6.12.0

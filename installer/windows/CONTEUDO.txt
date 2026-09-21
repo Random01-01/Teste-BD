@@ -1,0 +1,29 @@
+CONTEUDO DOS PACOTES AURA
+========================
+
+Essencial e Completo levam os mesmos arquivos da aplicacao. O que muda e a
+etapa de pre-requisitos do configurador, registrada em release-info.json:
+Essential reutiliza Python/MySQL; Complete pode instala-los online.
+
+frontend/: interface e assets. Nenhuma senha, token ou dado de cliente.
+backend/: API Django, configuracao base e perfil desktop local, models,
+serializers, migrations, URLs e Django Admin. Nao inclui banco, .env real,
+fixtures da previa, testes, caches, node_modules nem ambientes virtuais.
+desktop/: scripts PowerShell de setup/inicio/backup e runtime Python.
+requirements*.txt: versoes das bibliotecas obtidas do PyPI durante o setup.
+config.desktop: configuracao especifica para HTTP em loopback, DEBUG=False.
+LEIAME.txt: instalacao, uso, pre-requisitos, seguranca, dados e manutencao.
+manifest.json: lista de arquivos e hashes SHA256 do payload.
+release-info.json: versao, edicao, arquitetura e identificacao de pacote online.
+*.cmd: alternativas aos atalhos, especialmente para a distribuicao ZIP.
+aura.ico: icone local dos atalhos e do desinstalador.
+
+NAO INCLUI: Python, MySQL, VC++ ou bibliotecas ja instalados/offline; dados
+reais, senha padrao de administradora, credenciais, tokens do Arena/GitHub,
+chaves de producao, acesso a hospedagem, SMTP contratado ou dominio publico.
+
+Os EXEs copiam arquivos e criam atalhos. A configuracao efetiva ocorre na
+janela que abre ao final e deve terminar sem erros antes de usar o Aura.
+No modo silencioso do EXE, a configuracao interativa e ignorada: execute
+Configurar Aura manualmente depois. O pacote nao suporta implantacao
+corporativa totalmente silenciosa com credenciais predefinidas.

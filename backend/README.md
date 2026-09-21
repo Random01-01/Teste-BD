@@ -111,3 +111,11 @@ A disponibilidade é consultiva: o horário pode ser ocupado entre GET e POST. A
 - O throttle usa cache local por padrão; configure Redis/cache compartilhado e limitação no proxy em produção.
 - As listagens não estão paginadas nesta versão, adequada ao escopo de uma profissional. Para históricos muito extensos, adicione paginação e consultas agregadas antes de crescer o volume.
 - Não armazene dados reais na base da demonstração. Mantenha retenção, exportação/exclusão de dados, backups e obrigações LGPD sob controle do negócio.
+
+## Diagnóstico de CSRF
+
+Rejeições CSRF, tanto nas telas de autenticação quanto na autenticação de sessão do DRF, retornam `403` com `code: "csrf_failed"` e `csrfReason` (`cookie_missing`, `token_invalid`, `origin_rejected` ou `referer_rejected`). A resposta não expõe tokens nem os diagnósticos internos do middleware. Outros erros de permissão continuam distintos e não disparam tentativas automáticas.
+
+O endpoint de CSRF, autenticação e perfil usa `Cache-Control: no-store`. Em desenvolvimento, `PREVIEW_ORIGIN` adiciona uma **origem HTTPS exata** à lista confiável; no Arena ela pode ser obtida do identificador do sandbox. Essa inclusão automática só existe com `DEBUG=True`. Em produção, configure `CSRF_TRUSTED_ORIGINS` explicitamente. Nunca use `csrf_exempt` como correção para cookies bloqueados.
+
+O proxy Node ajusta atributos dos cookies apenas na origem HTTPS de prévia. Não substitui nem inventa o cookie/token recebido e não altera a política de produção do Django. Consulte o README do front-end para o teste de regressão em iframe e o fallback de abrir em nova aba.

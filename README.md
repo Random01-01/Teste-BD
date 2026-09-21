@@ -4,6 +4,15 @@ Sistema de gerenciamento e agendamento para uma profissional autônoma de beleza
 
 **GitHub Pages serve somente o front-end. Python, sessões e banco de dados precisam de um servidor separado.** Nenhuma senha, credencial de banco ou dado real de cliente está incluído no repositório.
 
+## Instalação no Windows
+
+Há dois pacotes online preparados para Windows 10/11 x64: **Essencial** (Python/MySQL já preparados) e **Completo** (preparação dos pré-requisitos via winget). Ambos incluem LEIAME, configurador, atalhos e backup. A instalação abre o Aura localmente, sem depender da prévia do Arena; não publica um site na internet.
+
+- [Guia de uso dos instaladores — LEIAME](installer/windows/LEIAME.txt)
+- [Conteúdo dos pacotes](installer/windows/CONTEUDO.txt)
+- [Build, testes e publicação dos instaladores](installer/README.md)
+- [Releases do projeto](https://github.com/Random01-01/Teste-BD/releases)
+
 ## O que está implementado
 
 - **Profissional:** painel com métricas calculadas, agenda diária/semanal, busca, clientes e seus históricos, serviços (ativação/desativação), expediente semanal, intervalos, bloqueios, prazo de cancelamento, confirmação/recusa/conclusão de atendimentos.
@@ -149,7 +158,7 @@ O comando cria serviços, 12 clientes fictícias com e-mails `example.com`, hist
 
 ```bash
 # Na raiz:
-npm test                      # Verificação sintática dos arquivos JS
+npm test                      # Verificação sintática e testes unitários JS
 npm run build                 # Gera dist/ estático, sem modo demo
 
 # Em backend/, com um banco de TESTE configurado:
@@ -216,6 +225,8 @@ COOKIE_SAMESITE=None
 
 Origens **não** contêm caminho (`/Teste-BD`); `FRONTEND_URL` contém o caminho do site porque compõe o link de recuperação. Configure a origem exata do domínio personalizado se houver. Não use `CORS_ALLOW_ALL_ORIGINS` com credenciais.
 
+Na **prévia incorporada de desenvolvimento**, o proxy ajusta os cookies apenas para a origem HTTPS exata da prévia, utilizando `SameSite=None; Secure; Partitioned`. A interface renova tokens desatualizados uma vez e oferece abertura em nova aba se o navegador ainda bloquear cookies. O CSRF continua obrigatório; essa política de prévia não é publicada no Pages. Veja os detalhes no [README do front-end](frontend/README.md#prévia-incorporada-e-recuperação-automática-de-csrf).
+
 A API fornece um token CSRF em `GET /api/auth/csrf/`. O front-end o mantém em memória e o envia em `X-CSRFToken`, sempre com `credentials: 'include'`. Após login, cadastro e logout, o token é renovado. Isso funciona sem tentar ler, pelo JavaScript do Pages, o cookie pertencente ao domínio da API.
 
 Com `DEBUG=False`, o projeto ativa `SESSION_COOKIE_SECURE=True`, `CSRF_COOKIE_SECURE=True`, `SESSION_COOKIE_HTTPONLY=True`, `CSRF_COOKIE_HTTPONLY=False`, redirecionamento HTTPS e HSTS.
@@ -262,3 +273,33 @@ A API fica na porta 8000. MySQL fica apenas na rede interna do Compose. O arquiv
 - CI preparado para MySQL 8.4; publicação e execução do CI dependem da configuração do repositório. Nenhum deploy público de Django/MySQL/Pages foi efetuado automaticamente.
 
 O banner é uma imagem gerada para este projeto. DM Sans e Manrope são distribuídas localmente sob SIL Open Font License (licenças em `frontend/assets/fonts/`). Nenhum serviço de fontes externo é necessário.
+
+## Instância de teste limpa, separada da demonstração normal
+
+Para testar autenticação sem reutilizar banco, cookies ou chave de sessão anteriores:
+
+```bash
+# Na raiz, com o Python do ambiente virtual e dependências instaladas:
+python scripts/setup-test-preview.py
+DJANGO_ENV_FILE=backend/.env.test-preview python backend/manage.py createsuperuser
+DJANGO_ENV_FILE=backend/.env.test-preview python backend/manage.py runserver 0.0.0.0:8001 --noreload
+# Outro terminal:
+node --env-file=backend/.env.test-preview scripts/dev-server.mjs
+```
+
+- Interface: porta **8080**, identificada como **Aura — Teste limpo**, começando no login, sem login automático.
+- API: porta **8001**; todas as chamadas do navegador continuam relativas à interface.
+- Banco: `backend/test-preview.sqlite3`, independente de `backend/db.sqlite3`.
+- Configuração: `backend/.env.test-preview`, chave aleatória própria e cookies `aura_test_session` / `aura_test_csrf`.
+- A senha de administrador é definida por `createsuperuser`, nunca escrita no código. Os dados semeados são fictícios.
+- Cookies: `Secure; SameSite=None; Partitioned`. Nesta instância dedicada HTTPS, a política é explícita e não depende do `Host` interno que o proxy da plataforma pode reescrever. Não confia em headers de encaminhamento fornecidos pelo cliente; o Django continua validando o token, cookie e a origem CSRF.
+- Recuperação de senha: e-mails simulados em `backend/.test-preview-emails/`, sem enviar mensagens reais. Esses arquivos contêm links sensíveis e são excluídos do Git e do Docker build.
+- O script **recusa sobrescrever** um ambiente/banco de teste existente. Não apaga nem modifica a base normal.
+
+A configuração é **HTTPS-only**. No Arena a origem é detectada automaticamente. Fora dele, defina `TEST_PREVIEW_ORIGIN=https://origem-do-seu-proxy` antes de executar o setup e configure o terminador TLS. Não use esta instância com dados reais nem publique suas credenciais de teste.
+
+### Acesso protegido à prévia do Arena
+
+Abra **Aura — Teste limpo** pelo painel de prévia da plataforma. A URL direta `*.e2b.app` pode exigir um header de acesso de infraestrutura e responder **Missing Traffic Access Token** fora desse painel. Esse header não é a senha nem o token CSRF do Django. Não inclua tokens da plataforma no front-end, no repositório ou em links públicos.
+
+O isolamento acima cria uma nova instância da aplicação **dentro do mesmo sandbox**, não provisiona um novo sandbox Arena nem remove seu controle de acesso. Se o próprio painel autorizado da plataforma apresentar essa mensagem, a conexão da prévia precisa ser restaurada pelo Arena; alterar Django ou desativar CSRF não resolve a autorização de infraestrutura.

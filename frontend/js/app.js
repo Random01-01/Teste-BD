@@ -1,4 +1,4 @@
-import { api, demo } from './api.js';
+import { api, demo, managedPreview, previewLabel } from './api.js?v=session-v3';
 
 const icons = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="1.7"/><rect x="14" y="3" width="7" height="7" rx="1.7"/><rect x="3" y="14" width="7" height="7" rx="1.7"/><rect x="14" y="14" width="7" height="7" rx="1.7"/>',
@@ -62,6 +62,10 @@ function closeModal() { document.getElementById('modal-root').innerHTML = ''; do
 const empty = (title, text, symbol = 'calendar') => `<div class="empty">${icon(symbol)}<h3>${title}</h3><p>${text}</p></div>`;
 const field = (label, name, value = '', type = 'text', attrs = '') => `<label class="field"><span>${label}</span><input type="${type}" name="${name}" value="${esc(value)}" ${attrs}></label>`;
 const formError = '<div class="form-error" role="alert" hidden></div>';
+const cookieHelp = error => error.code === 'csrf_failed' && error.csrfReason === 'cookie_missing'
+  ? (managedPreview
+    ? '<div class="cookie-help-text">Use o painel de prévia do Arena para acessar esta instância. Não copie a URL e2b.app: ela exige autorização da plataforma. Não há token para preencher no Aura.</div><button type="button" class="button secondary cookie-help" data-action="reload-preview">Recarregar esta prévia</button>'
+    : `<a class="button secondary cookie-help" href="${esc(location.href)}" target="_blank" rel="noopener noreferrer">Abrir Aura em nova aba ${icon('arrow')}</a>`) : '';
 const submitButton = (label = 'Salvar alterações') => `<div class="form-footer"><button class="button secondary" type="button" data-action="close-modal">Cancelar</button><button class="button primary" type="submit">${label}${icon('arrow')}</button></div>`;
 
 async function loadData() {
@@ -87,7 +91,7 @@ function sidebar() {
 function shell(content) {
   const labels = { painel: 'Visão geral', agenda: 'Minha agenda', clientes: 'Clientes', servicos: 'Serviços', horarios: 'Horários de atendimento', historico: 'Histórico', configuracoes: 'Configurações', inicio: 'Bem-vinda ao Aura', perfil: 'Meu perfil', 'meus-agendamentos': 'Meus agendamentos', login: 'Minha conta', cadastro: 'Criar conta', 'recuperar-senha': 'Recuperar senha', 'redefinir-senha': 'Nova senha' };
   return `${sidebar()}<div class="workspace"><header class="topbar"><div class="breadcrumb"><button class="icon-button mobile-menu" data-action="menu" aria-label="Abrir menu">${icon('menu')}</button><span>Meu espaço</span>${icon('chevron')}<strong>${labels[route()] || 'Aura'}</strong></div><div class="top-actions"><button class="top-search" data-action="search">${icon('search')}<span>Buscar no Aura…</span><kbd>⌘ K</kbd></button>${state.user ? `<button class="icon-button notification-button" data-action="notifications" aria-label="Notificações">${icon('bell')}${state.notifications.some(n => !n.read) ? '<i></i>' : ''}</button><span class="header-divider"></span><button class="account-button" data-action="account">${avatar(state.user.name, 1)}<span><strong>${esc(staff() ? state.settings.professional_name : state.user.name.split(' ')[0])}</strong><small>${staff() ? 'Profissional de beleza' : 'Seu momento é agora'}</small></span>${icon('down')}</button>` : `<a href="#login" class="button primary small">Entrar ${icon('arrow')}</a>`}</div></header>
-    <main id="main">${content}</main><footer class="main-footer"><span>Aura © ${new Date().getFullYear()} <span class="footer-sep">•</span> Mais tempo para cuidar.</span><span>${demo ? '<i class="demo-dot"></i> Ambiente de demonstração · dados fictícios' : 'Seu espaço, com mais leveza.'}</span></footer></div>`;
+    <main id="main">${previewLabel ? `<div class="test-environment-banner">${icon('lock')}<div><strong>${esc(previewLabel)}</strong><span>Banco e sessões separados · dados fictícios · e-mails simulados · acesso pelo painel de prévia do Arena</span></div></div>` : ''}${content}</main><footer class="main-footer"><span>Aura © ${new Date().getFullYear()} <span class="footer-sep">•</span> Mais tempo para cuidar.</span><span>${demo ? '<i class="demo-dot"></i> Ambiente de demonstração · dados fictícios' : 'Seu espaço, com mais leveza.'}</span></footer></div>`;
 }
 function pageHeading(title, subtitle, action = '') { return `<section class="page-heading"><div><h1>${title}</h1><p>${subtitle}</p></div>${action}</section>`; }
 const newBooking = () => `<button class="button primary" data-action="book">${icon('plus')}Novo agendamento</button>`;
@@ -260,6 +264,7 @@ function helpModal() {
 
 async function handleAction(button, event) {
   const action = button.dataset.action, id = Number(button.dataset.id);
+  if (action === 'reload-preview') { location.reload(); return; }
   if (action === 'close-modal' || action === 'backdrop' && event.target === button) closeModal();
   else if (action === 'menu') document.querySelector('.sidebar').classList.toggle('open');
   else if (action === 'book') { closeModal(); await openBooking(id || ''); }
@@ -391,11 +396,13 @@ document.addEventListener('submit', async event => {
       await api('/settings/', 'PATCH', data); await refresh(); toast('Suas preferências foram salvas.');
     }
   } catch (e) {
-    errorBox.textContent = e.message; errorBox.hidden = false; errorBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    errorBox.innerHTML = `<span>${esc(e.message)}</span>${cookieHelp(e)}`; errorBox.hidden = false; errorBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   } finally { if (button.isConnected) { button.disabled = false; button.innerHTML = previous; } }
 });
 window.addEventListener('hashchange', () => { closeModal(); state.search = ''; state.statusFilter = ''; render(); window.scrollTo(0, 0); });
 async function init() {
+  const startPage = window.AURA_CONFIG?.START_PAGE;
+  if (!location.hash && startPage === 'login') history.replaceState(null, '', '#login');
   try {
     await api('/auth/csrf/');
     try { state.user = await api('/auth/me/'); }
@@ -410,7 +417,7 @@ async function init() {
     }
     state.loading = false; render();
   } catch (e) {
-    document.getElementById('app').innerHTML = `<div class="boot"><span class="brand-word">aura<span>✳</span></span><h2>Seu espaço estará aqui.</h2><p>${esc(e.message)}</p><button class="button primary" id="retry-connection">Tentar novamente ${icon('arrow')}</button><a href="#login" id="offline-login" class="text-link">Ver tela de acesso</a></div>`;
+    document.getElementById('app').innerHTML = `<div class="boot"><span class="brand-word">aura<span>✳</span></span><h2>Seu espaço estará aqui.</h2><p>${esc(e.message)}</p>${cookieHelp(e)}<button class="button primary" id="retry-connection">Tentar novamente ${icon('arrow')}</button><a href="#login" id="offline-login" class="text-link">Ver tela de acesso</a></div>`;
     document.getElementById('retry-connection').onclick = init;
     document.getElementById('offline-login').onclick = () => { state.user = null; render(); };
   }

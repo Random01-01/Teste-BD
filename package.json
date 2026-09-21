@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node --env-file-if-exists=backend/.env scripts/dev-server.mjs",
     "build": "node scripts/build.mjs",
-    "test": "node --check frontend/js/app.js && node --check frontend/js/api.js && node --check scripts/dev-server.mjs && node --check scripts/build.mjs",
+    "test": "node --check frontend/js/app.js && node --check frontend/js/api.js && node --check scripts/dev-server.mjs && node --check scripts/build.mjs && node --check scripts/preview-cookies.mjs && node --test tests/unit/*.test.mjs",
     "test:e2e": "playwright test"
   },
   "engines": {

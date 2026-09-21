@@ -13,3 +13,4 @@ backend/media/
 .playwright/
 playwright-report/
 test-results/
+backend/.test-preview-emails/

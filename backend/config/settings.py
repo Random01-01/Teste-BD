@@ -4,7 +4,8 @@ from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / '.env')
+# An explicit file allows disposable instances without reading the normal DB/secret.
+load_dotenv(os.getenv('DJANGO_ENV_FILE', str(BASE_DIR / '.env')), interpolate=False)
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 SECRET_KEY = os.getenv('SECRET_KEY', '')
 if not SECRET_KEY or SECRET_KEY == 'replace-with-a-long-random-secret':
@@ -33,7 +34,10 @@ TEMPLATES = [{'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIR
 if os.getenv('DB_ENGINE', 'mysql') == 'sqlite':
     if not DEBUG and 'test' not in __import__('sys').argv:
         raise ImproperlyConfigured('SQLite é permitido somente em desenvolvimento ou testes.')
-    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}}
+    sqlite_path = Path(os.getenv('DB_SQLITE_PATH', 'db.sqlite3'))
+    if not sqlite_path.is_absolute():
+        sqlite_path = BASE_DIR / sqlite_path
+    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': sqlite_path}}
 else:
     DATABASES = {'default': {
         'ENGINE': 'django.db.backends.mysql', 'NAME': os.getenv('DB_NAME', 'aura'),
@@ -61,8 +65,25 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS')
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
+# The browser's origin is the HTTPS preview, not the local Django proxy target.
+# This exception is development-only and never trusts a client-supplied header.
+if DEBUG:
+    from urllib.parse import urlsplit
+    preview_origin = os.getenv('PREVIEW_ORIGIN', '')
+    if not preview_origin and os.getenv('E2B_SANDBOX_ID'):
+        preview_origin = f"https://{os.getenv('PORT', '5173')}-{os.environ['E2B_SANDBOX_ID']}.e2b.app"
+    if preview_origin:
+        parsed_preview = urlsplit(preview_origin)
+        if (parsed_preview.scheme != 'https' or not parsed_preview.netloc or
+                parsed_preview.username or parsed_preview.password or
+                parsed_preview.path not in ('', '/') or parsed_preview.query or parsed_preview.fragment):
+            raise ImproperlyConfigured('PREVIEW_ORIGIN deve ser uma origem HTTPS sem caminho ou credenciais.')
+        CSRF_TRUSTED_ORIGINS.append(f'https://{parsed_preview.netloc}')
+# HTTPS preview can require secure cookies even while Django runs in DEBUG.
+SESSION_COOKIE_SECURE = not DEBUG or os.getenv('COOKIE_SECURE', 'False').lower() == 'true'
+CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
+SESSION_COOKIE_NAME = os.getenv('SESSION_COOKIE_NAME', 'sessionid')
+CSRF_COOKIE_NAME = os.getenv('CSRF_COOKIE_NAME', 'csrftoken')
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = os.getenv('COOKIE_SAMESITE', 'Lax')
@@ -78,6 +99,7 @@ if os.getenv('TRUST_PROXY', 'False').lower() == 'true':
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173/')
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_FILE_PATH = os.getenv('EMAIL_FILE_PATH', str(BASE_DIR / '.test-preview-emails'))
 EMAIL_HOST = os.getenv('EMAIL_HOST', '')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
@@ -85,7 +107,7 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Aura <noreply@example.com>')
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework.authentication.SessionAuthentication'],
+    'DEFAULT_AUTHENTICATION_CLASSES': ['users.security.CsrfSessionAuthentication'],
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
     'DEFAULT_THROTTLE_CLASSES': ['rest_framework.throttling.AnonRateThrottle', 'rest_framework.throttling.UserRateThrottle'],
     'DEFAULT_THROTTLE_RATES': {'anon': '60/min', 'user': '300/min', 'auth': '10/min'},

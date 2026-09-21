@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from datetime import datetime, date, time, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
@@ -19,6 +20,7 @@ TEST_PASSWORD = 'Only-for-tests!9385'
 
 class ApiTests(TestCase):
     def setUp(self):
+        cache.clear()  # Isolate per-request throttle state between test cases.
         self.staff = User.objects.create_user('admin@example.com', TEST_PASSWORD, is_staff=True)
         self.user = User.objects.create_user('alice@example.com', TEST_PASSWORD)
         self.other = User.objects.create_user('bob@example.com', TEST_PASSWORD)

@@ -10,6 +10,8 @@ from django.utils.decorators import method_decorator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.cache import never_cache
+from .security import csrf_error_payload
 from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -25,12 +27,14 @@ def user_data(user):
             'name': user.profile.full_name if hasattr(user, 'profile') else user.first_name or 'Profissional',
             'profile': ClientSerializer(user.profile).data if hasattr(user, 'profile') else None}
 
+@method_decorator(never_cache, name='dispatch')
 @method_decorator(csrf_protect, name='dispatch')
 class AuthView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'auth'
 
+@method_decorator(never_cache, name='dispatch')
 class CsrfView(APIView):
     permission_classes = [AllowAny]
     def get(self, request):
@@ -66,6 +70,7 @@ class LogoutView(AuthView):
         logout(request)
         return Response({'detail': 'Você saiu com segurança.', 'csrfToken': get_token(request)})
 
+@method_decorator(never_cache, name='dispatch')
 class MeView(APIView):
     def get(self, request):
         return Response(user_data(request.user))
@@ -115,4 +120,6 @@ class PasswordResetConfirmView(AuthView):
 
 def csrf_failure(request, reason=''):
     from django.http import JsonResponse
-    return JsonResponse({'detail': 'Sua sessão de segurança expirou. Atualize a página e tente novamente.'}, status=403)
+    response = JsonResponse(csrf_error_payload(reason), status=403)
+    response['Cache-Control'] = 'no-store, private'
+    return response

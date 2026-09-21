@@ -58,7 +58,7 @@ Reserva, escolha de horário, detalhes, edição e confirmação utilizam diálo
 - Nenhum token em localStorage, nenhuma senha no build.
 - `api.js` centraliza erros JSON, CSRF, cookies e URL configurável.
 - O back-end é a autoridade de permissões e regras, não os botões da interface.
-- Se a sessão expirar, novas operações são rejeitadas pela API; atualize a página e entre novamente.
+- Se o token CSRF ficar desatualizado, o cliente o renova uma vez. Se a sessão de login expirar, entre novamente. Cookies bloqueados recebem orientação para abrir a aplicação em nova aba.
 - Em hospedagem cross-site, verifique bloqueio de cookies de terceiros. Domínios personalizados do mesmo site são recomendados; leia o README principal.
 
 ## Testes
@@ -69,3 +69,18 @@ npm run test:e2e
 ```
 
 O segundo comando exige demonstração descartável com dados semeados e Playwright instalado. Veja o guia principal. A imagem do banner foi gerada para este projeto; fontes DM Sans e Manrope incluem suas licenças locais.
+
+### Prévia incorporada e recuperação automática de CSRF
+
+Em uma prévia dentro de um iframe de outro site, `SameSite=Lax` impede o envio dos cookies, mesmo que o usuário informe a senha correta. O proxy **de desenvolvimento** reconhece a origem HTTPS exata configurada em `PREVIEW_ORIGIN` (ou a origem deste sandbox Arena, automaticamente) e acrescenta `SameSite=None; Secure; Partitioned` somente aos cookies Django nessa origem. Cookies HTTP-only continuam HTTP-only, inclusive na exclusão durante logout. Requisições locais HTTP e o build de produção não recebem essa alteração.
+
+O cliente busca tokens com `cache: 'no-store'`. Em uma rejeição explícita de CSRF por cookie/token, busca um token novo e repete a requisição **uma única vez**. Não repete erros de senha, falta de permissão, limite de tentativas, erro de origem nem falhas de rede. Fora de uma prévia gerenciada, a mensagem pode oferecer **Abrir Aura em nova aba**. No Arena, orienta usar/recarregar o painel autorizado de prévia, sem gerar um link direto que perderia a autorização de tráfego da plataforma. Nenhuma proteção CSRF é desativada.
+
+Além dos testes unitários (`npm test`), o teste `embedded-preview.spec.js` usa um iframe HTTPS de outro site, um certificado temporário e o proxy/API reais para verificar cookies particionados, login, persistência de sessão, escrita protegida, logout e recuperação de senha. O transporte não simula respostas de autenticação nem injeta cookies. Para rodá-lo sem privilégios de porta em desenvolvimento, pare os servidores existentes e execute `PREVIEW_ORIGIN=https://aura-preview.example:4443 npm run test:e2e`; o Playwright inicia os servidores com essa mesma origem. Chrome ignora somente a autoridade do certificado temporário do teste, não as regras de cookies, CORS ou CSRF.
+
+
+### Instância limpa e versões de assets
+
+O script `scripts/setup-test-preview.py` prepara a instância HTTPS de teste da porta 8080 com banco e nomes de cookies independentes, login manual e faixa de identificação. Leia o guia na raiz. Os arquivos do servidor de desenvolvimento usam `Cache-Control: no-store`, e os entrypoints da interface têm versão explícita para evitar reutilizar os módulos antigos durante correções de sessão.
+
+`PREVIEW_COOKIE_POLICY=partitioned` é uma opção explícita apenas do proxy de desenvolvimento (`DEBUG=True` + origem HTTPS). Na instância dedicada, preserva cookies isolados mesmo quando o proxy da plataforma substitui o Host pelo endereço interno. Não altera a autenticação da API, não forja cookies e não autoriza novas origens de requisição. O build estático não inclui essa opção nem as credenciais da instância.
