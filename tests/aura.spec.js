@@ -23,7 +23,8 @@ test('painel, busca global, navegação e detalhes reais', async ({ page }) => {
 test('nova reserva, confirmação e cancelamento pelo painel', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Novo agendamento', exact: true }).click();
-  await page.locator('#booking-service').selectOption({ label: 'Design de sobrancelhas · R$ 45,00' });
+  const serviceId = await page.locator('#booking-service option').filter({ hasText: 'Design de sobrancelhas' }).getAttribute('value');
+  await page.locator('#booking-service').selectOption(serviceId);
   await page.locator('select[name=client]').selectOption({ label: 'Ana Clara Silva' });
   const day = new Date(); day.setDate(day.getDate() + 12);
   if (day.getDay() === 0) day.setDate(day.getDate() + 1);

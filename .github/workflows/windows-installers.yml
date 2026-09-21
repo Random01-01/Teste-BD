@@ -17,6 +17,8 @@ jobs:
   package:
     runs-on: windows-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
     env:
       AURA_VERSION: '0.1.0'
       PYTHONUTF8: '1'
@@ -89,3 +91,22 @@ jobs:
             dist/windows/*.txt
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish requested Windows preview release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0c1b9-teste-bd'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v$env:AURA_VERSION-windows-preview"
+          gh release view $tag --repo $env:GITHUB_REPOSITORY --json url 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host 'Release already exists; immutable published assets were not replaced.'
+            exit 0
+          }
+          $files = @(Get-ChildItem dist/windows -File | Where-Object { $_.Extension -in @('.exe','.zip','.txt') } | ForEach-Object FullName)
+          if (($files | Where-Object { $_ -like '*.exe' }).Count -ne 2) { throw 'Expected two compiled EXEs' }
+          gh release create $tag @files --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --latest=false --title "Aura $env:AURA_VERSION - Instaladores Windows (previa)" --notes-file installer/windows/RELEASE-NOTES.md
+          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed; no complete public release was claimed.' }
+          gh release edit $tag --repo $env:GITHUB_REPOSITORY --draft=false
+          if ($LASTEXITCODE -ne 0) { throw 'Release remains a draft; publish failed.' }

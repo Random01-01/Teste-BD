@@ -71,7 +71,7 @@ jobs:
         run: |
           npm test
           npx playwright install --with-deps chromium
-          npm run test:e2e
+          npm run test:e2e -- --reporter=github,list
       - name: Build static frontend
         env:
           API_URL: ${{ vars.API_URL || '/api' }}
