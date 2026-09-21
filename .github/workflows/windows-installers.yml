@@ -27,7 +27,8 @@ jobs:
           python-version: '3.13'
           architecture: x64
       - name: Install runtime dependencies for tests
-        run: python -m pip install --only-binary=:all: -r backend/requirements-windows.txt
+        run: |
+          python -m pip install --only-binary=:all: -r backend/requirements-windows.txt
       - name: Validate Python packaging and PowerShell scripts
         shell: pwsh
         run: |
