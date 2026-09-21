@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+node_modules/
+dist/
+backend/staticfiles/
+backend/media/
+*.log
+.playwright/
+playwright-report/
+test-results/
+backend/.test-preview-emails/
