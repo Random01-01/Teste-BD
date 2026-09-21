@@ -96,8 +96,12 @@ test('cadastro de cliente, perfil, saída e recuperação de senha', async ({ pa
   await page.locator('[data-action=account]').click();
   await page.getByRole('button', { name: 'Sair da minha conta', exact: true }).click();
   await page.getByRole('link', { name: 'Esqueci minha senha', exact: true }).click();
+  // Both routes contain an email field: wait for hash navigation before filling it.
+  await expect(page.getByRole('heading', { name: 'Vamos recuperar seu acesso.' })).toBeVisible();
   await page.locator('[name=email]').fill(email);
+  const resetResponse = page.waitForResponse(r => r.url().endsWith('/api/auth/password-reset/') && r.request().method() === 'POST');
   await page.getByRole('button', { name: 'Enviar link de recuperação', exact: true }).click();
+  expect((await resetResponse).status()).toBe(200);
   await expect(page.getByRole('heading', { name: 'Confira sua caixa de entrada.' })).toBeVisible();
 });
 
