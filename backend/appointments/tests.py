@@ -1,4 +1,9 @@
 from django.core.cache import cache
+import os
+import io
+import tempfile
+from decimal import Decimal
+from django.core.management import call_command
 from datetime import datetime, date, time, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
@@ -260,3 +265,88 @@ class MySQLConcurrencyTests(TransactionTestCase):
             results = list(pool.map(lambda _: request(), range(2)))
         self.assertEqual(sorted(results), [201, 400])
         self.assertEqual(Appointment.objects.count(), 1)
+
+
+SAMPLE_SISTEMA_AGENDAMENTO_SQL = """
+-- SISTEMA DE AGENDAMENTO - exemplo do formato da branch B
+DROP DATABASE IF EXISTS sistema_agendamento;
+CREATE DATABASE sistema_agendamento CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+INSERT INTO profissional (nome, telefone, email) VALUES ('Mariana Souza', '(18) 99999-1111', 'mariana@email.com');
+INSERT INTO categoria_servico (nome) VALUES ('Cabelo'), ('Estética');
+INSERT INTO usuario (id_profissional, nome, email, senha_hash) VALUES (1, 'Mariana Admin', 'admin@mariana.com', '$2b$12$hash_exemplo_123');
+INSERT INTO cliente (nome, telefone, email) VALUES
+('Ana Paula', '(18) 98888-2222', 'ana@email.com'),
+('Juliana Santos', '(18) 97777-3333', 'juliana@email.com');
+INSERT INTO servico (id_profissional, id_categoria, nome, descricao, preco, duracao_minutos) VALUES
+(1, 1, 'Corte feminino', 'Corte de cabelo feminino', 60.00, 60),
+(1, 2, 'Design de sobrancelha', 'Design com henna', 50.00, 30);
+INSERT INTO horario_disponivel (id_profissional, dia_semana, hora_inicio, hora_fim) VALUES
+(1, 'Segunda', '09:00', '18:00'),
+(1, 'Terca', '09:00', '18:00'),
+(1, 'Terca', '14:00', '16:00');
+INSERT INTO agendamento (id_cliente, id_servico, id_profissional, data_agendamento, hora_inicio, hora_fim, status, observacao) VALUES
+(1, 1, 1, '2030-10-06', '10:00', '11:00', 'CONFIRMADO', 'Prefere janela'),
+(2, 2, 1, '2030-10-06', '10:30', '11:00', 'CONFIRMADO', NULL),
+(1, 2, 1, '2030-10-06', '10:30', '11:00', 'CANCELADO', 'Conflito permitido por ser cancelado');
+"""
+
+
+class SistemaAgendamentoImportTests(TestCase):
+    def setUp(self):
+        self.tmp = tempfile.NamedTemporaryFile('w', suffix='.sql', delete=False, encoding='utf-8')
+        self.tmp.write(SAMPLE_SISTEMA_AGENDAMENTO_SQL)
+        self.tmp.close()
+
+    def tearDown(self):
+        os.unlink(self.tmp.name)
+
+    def run_import(self):
+        out = io.StringIO()
+        call_command('import_sistema_agendamento', self.tmp.name, stdout=out)
+        return out.getvalue()
+
+    def test_imports_data_without_credentials_and_snapshots_price(self):
+        output = self.run_import()
+        self.assertIn('agendamentos=2', output)  # the 10:30 CONFIRMADO row conflicts and is skipped
+        self.assertEqual(ScheduleSettings.objects.get(pk=1).professional_name, 'Mariana Souza')
+        admin = User.objects.get(email='admin@mariana.com')
+        self.assertTrue(admin.is_staff)
+        self.assertFalse(admin.has_usable_password())
+        self.assertNotIn('hash_exemplo', admin.password)
+        self.assertIn('changepassword', output)
+        service = Service.objects.get(name='Corte feminino')
+        self.assertEqual(service.category, 'Cabelo')
+        self.assertEqual(service.duration_minutes, 60)
+        self.assertEqual(ClientProfile.objects.count(), 2)
+        confirmed = Appointment.objects.get(status=Appointment.Status.CONFIRMED)
+        self.assertEqual(confirmed.price, Decimal('60.00'))
+        self.assertEqual(confirmed.client_notes, 'Prefere janela')
+        self.assertEqual(Appointment.objects.filter(status=Appointment.Status.CANCELLED).count(), 1)
+
+    def test_conflicting_row_is_skipped_like_the_sql_trigger(self):
+        self.run_import()
+        # The 10:30 CONFIRMADO row overlaps 10:00-11:00 and must not be created.
+        self.assertFalse(Appointment.objects.filter(appointment_date='2030-10-06',
+                                                    start_time='10:30:00',
+                                                    status=Appointment.Status.CONFIRMED).exists())
+
+    def test_import_is_idempotent_and_keeps_existing_hours(self):
+        self.run_import()
+        output = self.run_import()
+        self.assertIn('agendamentos=0', output)
+        self.assertEqual(ClientProfile.objects.count(), 2)
+        self.assertEqual(User.objects.count(), 3)
+        self.assertEqual(BusinessHour.objects.count(), 2)
+        monday = BusinessHour.objects.get(day_of_week=0)
+        self.assertEqual(str(monday.opening_time)[:5], '09:00')
+        self.assertEqual(str(monday.closing_time)[:5], '18:00')
+        # Duplicate 'Terca' ranges merge into one business day (14-16 is inside 09-18).
+        tuesday = BusinessHour.objects.get(day_of_week=1)
+        self.assertEqual(str(tuesday.opening_time)[:5], '09:00')
+        self.assertEqual(str(tuesday.closing_time)[:5], '18:00')
+        tuesday.opening_time = '10:00'
+        tuesday.save()
+        self.run_import()
+        tuesday.refresh_from_db()
+        self.assertEqual(str(tuesday.opening_time)[:5], '10:00')

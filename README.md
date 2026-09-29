@@ -152,6 +152,8 @@ python manage.py seed_demo
 
 O comando cria serviços, 12 clientes fictícias com e-mails `example.com`, histórico e agenda em datas próximas. Não aceita execução com `DEBUG=False`. Para abrir automaticamente o painel fictício na prévia, passe os mesmos `DEMO_EMAIL`/`DEMO_PASSWORD`, `DEBUG=True` e `DEV_DEMO=true` ao `npm run dev`. Também é possível colocá-los no `.env` **local e ignorado**. A rota temporária `/api/demo-login/` existe apenas no proxy de desenvolvimento; não existe na API Django nem no build do Pages. Nunca ative esse modo com dados reais.
 
+**Para usar o script `Sistema-Agendamento.sql` (branch `B`):** os INSERTs podem ser convertidos para os modelos do site com `python manage.py import_sistema_agendamento arquivo.sql`. Veja [docs/USANDO-SQL-AGENDAMENTO.md](docs/USANDO-SQL-AGENDAMENTO.md) para o checklist de informações necessárias, o mapeamento de tabelas e sugestões de melhoria do script.
+
 **Alternativa sem MySQL para experimentar a interface:** `DB_ENGINE=sqlite`, `DEBUG=True`. Isso utiliza `backend/db.sqlite3`, ignorado pelo Git. SQLite **não implementa o mutex de linhas do MySQL** e não é autorizado para produção. A prévia desta implementação usa esse modo; valide MySQL antes de receber clientes reais.
 
 ## 6. Testes
