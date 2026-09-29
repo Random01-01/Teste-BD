@@ -1,0 +1,33 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-aura}
+      MYSQL_USER: ${DB_USER:-aura}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no arquivo backend/.env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no ambiente}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: [CMD, mysqladmin, ping, -h, localhost]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  api:
+    build: ./backend
+    restart: unless-stopped
+    env_file: backend/.env
+    environment:
+      DB_ENGINE: mysql
+      DB_HOST: mysql
+    ports:
+      - '8000:8000'
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - staticfiles:/app/staticfiles
+volumes:
+  mysql_data:
+  staticfiles:
